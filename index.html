@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Loan & Investment Monthly Calculator (Computed Fixed Repayment)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --muted: #334155;
+      --text: #e5e7eb;
+      --accent: #93c5fd;
+      --good: #16a34a;
+      --bad: #dc2626;
+      --warn: #f59e0b;
+      --chip: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, #0b1220, var(--bg));
+      color: var(--text);
+      padding: 24px;
+    }
+    h1, h2 { margin: 0 0 12px; }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      background: rgba(17,24,39,0.85);
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: 12px;
+      gap: 6px;
+      color: #cbd5e1;
+    }
+    input[type="number"], select {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s;
+    }
+    input[type="number"]:focus, select:focus { border-color: var(--accent); }
+    .hint {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .pill {
+      background: var(--chip);
+      border: 1px solid #263043;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .pill h3 {
+      margin: 0 0 6px;
+      font-size: 12px;
+      color: #9ca3af;
+      font-weight: 600;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+    .pill p {
+      margin: 0;
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+    }
+    .warn {
+      color: var(--warn);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    thead th {
+      background: #0b1220;
+      color: #cbd5e1;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 10px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    th:first-child, td:first-child { text-align: center; }
+    tfoot td {
+      background: #0b1220;
+      font-weight: 600;
+    }
+    .pos { color: var(--good); }
+    .neg { color: var(--bad); }
+    .controls-row { display: contents; }
+    @media (max-width: 920px) {
+      .controls { grid-template-columns: 1fr 1fr; }
+      .summary { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Loan & Investment Calculator (Computed Fixed Monthly Repayment)</h1>
+      <p class="hint">
+        Choose <b>Amortized (PMT)</b> or <b>Flat Interest (Total Interest Fixed)</b>.
+        Net Gain/Loss counts <b>earnings − interest</b> only (principal is not a cost).
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <div class="controls-row">
+          <label>
+            Repayment Type
+            <select id="repaymentType">
+              <option value="amortized">Amortized (PMT)</option>
+              <option value="flat">Flat Interest (Total Interest Fixed)</option>
+            </select>
+            <span class="hint">Amortized uses PMT; Flat fixes total interest = P × r × n</span>
+          </label>
+          <label>
+            Investment APR % (Annual)
+            <input type="number" id="investmentApr" step="0.01" placeholder="e.g. 9.5" value="9.5" />
+            <span class="hint">Compounded monthly for earnings</span>
+          </label>
+          <label>
+            Loan Interest % per Month
+            <input type="number" id="loanMonthlyRate" step="0.001" placeholder="e.g. 0.155" value="0.155" />
+            <span class="hint">Interest base depends on repayment type</span>
+          </label>
+          <label>
+            Loan Amount ($)
+            <input type="number" id="loan" step="0.01" placeholder="e.g. 10000" value="10000" />
+          </label>
+          <label>
+            Term (months)
+            <input type="number" id="term" step="1" placeholder="e.g. 3" value="3" />
+          </label>
+          <label>
+            Decimals
+            <input type="number" id="decimals" step="1" min="0" max="4" value="2" />
+            <span class="hint">Decimal places</span>
+          </label>
+        </div>
+      </div>
+      <div id="warning" class="warn" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <div class="card" id="tableContainer"></div>
+  </div>
+
+  <script>
+    const repaymentTypeInput = document.getElementById('repaymentType');
+    const investmentAprInput = document.getElementById('investmentApr');
+    const loanMonthlyRateInput = document.getElementById('loanMonthlyRate');
+    const loanInput = document.getElementById('loan');
+    const termInput = document.getElementById('term');
+    const decimalsInput = document.getElementById('decimals');
+
+    const summary = document.getElementById('summary');
+    const tableContainer = document.getElementById('tableContainer');
+    const warning = document.getElementById('warning');
+
+    function nf(decimals) {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+    function fmtMoney(v, decimals) {
+      const n = Number.isFinite(v) ? v : 0;
+      return nf(decimals).format(n);
+    }
+
+    function calcPaymentAndSchedule({ type, P, r_m, n }) {
+      // Returns { payment, totalInterest, interestSchedule, principalSchedule }
+      if (type === 'flat') {
+        const totalInterest = P * r_m * n;
+        const payment = (P + totalInterest) / n;
+        const interestPerMonth = totalInterest / n; // constant
+        const principalPerMonth = P / n;            // constant
+        const interestSchedule = Array(n).fill(interestPerMonth);
+        const principalSchedule = Array(n).fill(principalPerMonth);
+        return { payment, totalInterest, interestSchedule, principalSchedule };
+      } else {
+        // amortized PMT
+        let payment, totalInterest;
+        let interestSchedule = [];
+        let principalSchedule = [];
+
+        if (r_m > 0) {
+          payment = P * (r_m) / (1 - Math.pow(1 + r_m, -n));
+        } else {
+          payment = P / n;
+        }
+
+        // Build schedules month-by-month based on reducing balance
+        let bal = P;
+        totalInterest = 0;
+        for (let i = 0; i < n; i++) {
+          const interest = bal * r_m;
+          const principal = payment - interest;
+          interestSchedule.push(interest);
+          principalSchedule.push(principal);
+          totalInterest += interest;
+          bal = Math.max(0, bal - principal);
+        }
+        return { payment, totalInterest, interestSchedule, principalSchedule };
+      }
+    }
+
+    function calc() {
+      const type = repaymentTypeInput.value;  // 'amortized' or 'flat'
+      const investApr = parseFloat(investmentAprInput.value);
+      const loanMonthlyPercent = parseFloat(loanMonthlyRateInput.value);
+      const P = parseFloat(loanInput.value);
+      const n = parseInt(termInput.value, 10);
+      const dp = Math.max(0, Math.min(4, parseInt(decimalsInput.value || '2', 10)));
+
+      if (
+        !Number.isFinite(investApr) ||
+        !Number.isFinite(loanMonthlyPercent) ||
+        !Number.isFinite(P) ||
+        !Number.isFinite(n) || n <= 0
+      ) {
+        summary.innerHTML = '';
+        tableContainer.innerHTML = '';
+        warning.style.display = 'none';
+        return;
+      }
+
+      const investMonthlyRate = investApr / 12 / 100;
+      const r_m = loanMonthlyPercent / 100;
+
+      // Compute payment & schedules
+      const { payment, totalInterest, interestSchedule, principalSchedule } =
+        calcPaymentAndSchedule({ type, P, r_m, n });
+
+      // Warnings
+      warning.style.display = 'none';
+      warning.textContent = '';
+      if (type === 'amortized' && r_m <= 0) {
+        // no interest case is fine; PMT = P/n
+      }
+      if (type === 'flat' && (payment <= interestSchedule[0] + 1e-9)) {
+        warning.style.display = 'block';
+        warning.textContent = `Warning: Payment does not exceed monthly interest under flat method. Check rate/term.`;
+      }
+
+      // Summary (Month 1 values)
+      const month1Earnings = P * investMonthlyRate;
+      const month1Interest = interestSchedule[0];
+
+      summary.innerHTML = `
+        <div class="pill">
+          <h3>Repayment Type</h3>
+          <p>${type === 'flat' ? 'Flat Interest (Total Fixed)' : 'Amortized (PMT)'}</p>
+        </div>
+        <div class="pill">
+          <h3>Computed Fixed Payment</h3>
+          <p>${fmtMoney(payment, dp)}</p>
+        </div>
+        <div class="pill">
+          <h3>Total Loan Interest</h3>
+          <p>${fmtMoney(totalInterest, dp)}</p>
+        </div>
+        <div class="pill">
+          <h3>Month 1: Earnings / Interest</h3>
+          <p>${fmtMoney(month1Earnings, dp)} / ${fmtMoney(month1Interest, dp)}</p>
+        </div>
+      `;
+
+      // Build table by simulating balances
+      let investBalance = P; // invested cash
+      let loanPrincipal = P; // outstanding principal
+
+      let rows = [];
+      let cumulativeNet = 0;
+
+      for (let m = 1; m <= n; m++) {
+        const startBalance = investBalance;
+        const earnings = investBalance * investMonthlyRate;
+
+        // From schedules
+        const interest = interestSchedule[m - 1];
+        const principal = principalSchedule[m - 1];
+
+        const totalPayment = payment;                 // fixed by method
+        const endInvestBalance = startBalance + earnings - totalPayment;
+
+        // Update loan principal (cannot go negative)
+        loanPrincipal = Math.max(0, loanPrincipal - principal);
+
+        const net = earnings - interest;             // exclude principal
+        cumulativeNet += net;
+
+        rows.push({
+          month: m,
+          startBalance,
+          earnings,
+          interest,
+          totalPayment,
+          endBalance: endInvestBalance,
+          net,
+          cumulativeNet
+        });
+
+        investBalance = endInvestBalance;
+      }
+
+      // Build the table HTML
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Start Balance</th>
+              <th>Investment Earnings</th>
+              <th>Loan Interest</th>
+              <th>Total Payment</th>
+              <th>End Balance</th>
+              <th>Net Gain/Loss</th>
+              <th>Cumulative Net</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      for (const r of rows) {
+        html += `
+          <tr>
+            <td>${r.month}</td>
+            <td>${fmtMoney(r.startBalance, dp)}</td>
+            <td>${fmtMoney(r.earnings, dp)}</td>
+            <td>${fmtMoney(r.interest, dp)}</td>
+            <td>${fmtMoney(r.totalPayment, dp)}</td>
+            <td>${fmtMoney(r.endBalance, dp)}</td>
+            <td class="${r.net >= 0 ? 'pos' : 'neg'}">${fmtMoney(r.net, dp)}</td>
+            <td class="${r.cumulativeNet >= 0 ? 'pos' : 'neg'}">${fmtMoney(r.cumulativeNet, dp)}</td>
+          </tr>
+        `;
+      }
+
+      // Totals
+      const totalEarnings = rows.reduce((s, r) => s + r.earnings, 0);
+      const totalPayments = payment * n;
+
+      html += `
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" style="text-align:left;">Totals</td>
+              <td>${fmtMoney(totalEarnings, dp)}</td>
+              <td>${fmtMoney(totalInterest, dp)}</td>
+              <td>${fmtMoney(totalPayments, dp)}</td>
+              <td></td>
+              <td>${fmtMoney(totalEarnings - totalInterest, dp)}</td>
+              <td>${fmtMoney(rows[rows.length - 1].cumulativeNet, dp)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+
+      tableContainer.innerHTML = html;
+    }
+
+    // Event listeners
+    [repaymentTypeInput, investmentAprInput, loanMonthlyRateInput, loanInput, termInput, decimalsInput]
+      .forEach(el => el.addEventListener('input', calc));
+
+    // Initial render
+    calc();
+  </script>
+</body>
+</html>
